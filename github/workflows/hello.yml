@@ -1,0 +1,19 @@
+name: Hello World CI
+on:
+  push:
+    branches: [main]
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Say Hello
+        run: |
+          echo "Hello from GitHub Actions!"
+          echo "Current Date: $(date)"
+          echo "This workflow was triggered by: ${{ github.event_name }}"
+          echo "Triggered by user: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
