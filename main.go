@@ -76,7 +76,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request){
 
 	w.WriteHeader(http.StatusOK)
 	response := map[string]interface{}{
-		"status":"healthy",
+		"status":"sick",
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 	err := json.NewEncoder(w).Encode(response)
