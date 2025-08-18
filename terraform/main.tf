@@ -152,6 +152,13 @@ resource "aws_iam_role_policy" "ec2_policy" {
       {
         Effect = "Allow"
         Action = [
+          "s3:ListBucket"
+        ]
+        Resource = "arn:aws:s3:::*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ssm:UpdateInstanceInformation",
           "ssm:SendCommand",
           "ssm:ListCommands",
