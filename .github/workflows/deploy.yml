@@ -1,0 +1,40 @@
+name: Deploy to EC2
+
+on:
+  workflow_run:
+    workflows: ["Build Go application"]
+    types:
+      - completed
+    branches: [main]
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy to EC2
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Name,Values=SimpleGoWebServer" \
+            --parameters 'commands=[
+              "sudo pkill -f app || true",
+              "cd /home/ubuntu", 
+              "aws s3 cp s3://video-platform-deployments-zoaewe3s/app-${{ github.sha }} ./app-new",
+              "chmod +x app-new",
+              "mv app-new app",
+              "nohup ./app > app.log 2>&1 &",
+              "sleep 2",
+              "echo Deployment complete"
+            ]' \
+            --comment "Deploy commit ${{ github.sha }}"

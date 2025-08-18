@@ -86,6 +86,21 @@ func healthHandler(w http.ResponseWriter, r *http.Request){
 	}
 }
 
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+    logJSON("info", "version endpoint accessed", map[string]interface{}{
+        "path": r.URL.Path,
+        "method": r.Method,
+    })
+    
+    w.Header().Set("Content-Type", "application/json")
+    response := map[string]interface{}{
+        "version": "1.0.0",
+        "status": "running",
+        "timestamp": time.Now().Format(time.RFC3339),
+    }
+    json.NewEncoder(w).Encode(response)
+}
+
 func main() {
 
 	port := os.Getenv("PORT")
@@ -96,6 +111,7 @@ func main() {
 	c.Get("/hello", helloHandler)
 	c.Get("/about", aboutHandler)
 	c.Get("/health", healthHandler)
+	c.Get("/version", versionHandler)
 
 	c.NotFound(notFoundHandler)
 	c.MethodNotAllowed(methodNotAllowedHandler)

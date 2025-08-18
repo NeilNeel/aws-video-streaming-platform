@@ -111,12 +111,73 @@ resource "local_file" "go_server_private_key_file" {
     filename = "go-server-key.pem"
 }
 
+# IAM role for EC2 instance
+resource "aws_iam_role" "ec2_role" {
+  name = "video-platform-ec2-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+  
+  tags = {
+    Name = "VideoStreamingEC2Role"
+  }
+}
+
+# IAM policy with S3 and SSM permissions
+resource "aws_iam_role_policy" "ec2_policy" {
+  name = "video-platform-ec2-policy"
+  role = aws_iam_role.ec2_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = "arn:aws:s3:::*/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:UpdateInstanceInformation",
+          "ssm:SendCommand",
+          "ssm:ListCommands",
+          "ssm:ListCommandInvocations",
+          "ssm:DescribeInstanceInformation",
+          "ssm:GetCommandInvocation"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Instance profile to attach role to EC2
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "video-platform-ec2-profile"
+  role = aws_iam_role.ec2_role.name
+}
+
 resource "aws_instance" "go_server" {
     ami = "ami-0de716d6197524dd9"
     instance_type = "t2.micro"
     subnet_id = aws_subnet.public.id
     vpc_security_group_ids = [aws_security_group.web_sg.id]
     key_name = aws_key_pair.go_server_key.key_name
+    iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
     tags = {
         Name = "SimpleGoWebServer"
@@ -126,4 +187,37 @@ resource "aws_instance" "go_server" {
 output "instance_public_ip" {
   description = "Public IP address of the EC2 instance"
   value       = aws_instance.go_server.public_ip
+}
+
+# Generate random suffix, so that bucket can remain globally unique
+resource "random_string" "bucket_suffix" {
+  length  = 8
+  upper   = false
+  special = false
+}
+
+# will store the complied binary for the server
+resource "aws_s3_bucket" "deployment_artifacts" {
+  bucket = "video-platform-deployments-${random_string.bucket_suffix.result}"
+  
+  tags = {
+    Name = "DeploymentArtifacts"
+    Purpose = "StoringCompiledBinaries"
+  }
+}
+
+# Block public access to the bucket
+resource "aws_s3_bucket_public_access_block" "deployment_artifacts_pab" {
+  bucket = aws_s3_bucket.deployment_artifacts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Output the bucket name for use in GitHub Actions
+output "deployment_bucket_name" {
+  description = "Name of the S3 bucket for deployment artifacts"
+  value       = aws_s3_bucket.deployment_artifacts.bucket
 }
