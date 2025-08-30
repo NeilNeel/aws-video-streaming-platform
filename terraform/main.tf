@@ -229,8 +229,66 @@ resource "aws_s3_bucket_public_access_block" "deployment_artifacts_pab" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket" "video_uploads" {
+  bucket = "video-upload-${random_string.bucket_suffix.result}"
+
+  tags = {
+    Name = "VideoUploads"
+    Purpose = "StoringUserVideo"
+  }
+}
+
 # Output the bucket name for use in GitHub Actions
 output "deployment_bucket_name" {
   description = "Name of the S3 bucket for deployment artifacts"
   value       = aws_s3_bucket.deployment_artifacts.bucket
+}
+
+output "video_bucket_name" {
+  description = "Name of the S3 bucket used for video uploaded"
+  value = aws_s3_bucket.video_uploads.bucket
+}
+
+resource "aws_sns_topic" "video_upload_notifications" {
+  name = "video_upload_notifications"
+
+  tags = {
+    Purpose = "Video upload complete"
+  }
+}
+
+resource "aws_sns_topic_policy" "s3_notification_policy" {
+  arn = aws_sns_topic.video_upload_notifications.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {Service = "s3.amazonaws.com"}
+        Action = "SNS:Publish"
+        Resource = aws_sns_topic.video_upload_notifications.arn
+        Condition = {
+          ArnEquals = {"aws:SourceArn" = aws_s3_bucket.video_uploads.arn}
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_s3_bucket_notification" "bucket_notification" {
+  bucket = aws_s3_bucket.video_uploads.id
+
+  topic{
+    topic_arn = aws_sns_topic.video_upload_notifications.arn
+    events = ["s3:ObjectCreated:*"]
+  }
+
+  depends_on = [ aws_sns_topic_policy.s3_notification_policy ]
+}
+
+resource "aws_sns_topic_subscription" "email_target" {
+  topic_arn = aws_sns_topic.video_upload_notifications.arn
+  protocol  = "email"
+  endpoint = "neilpwith123@gmail.com"
 }

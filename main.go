@@ -7,6 +7,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -94,11 +97,47 @@ func versionHandler(w http.ResponseWriter, r *http.Request) {
     
     w.Header().Set("Content-Type", "application/json")
     response := map[string]interface{}{
-        "version": "1.0.0",
+		"version": "1.0.0",
         "status": "running",
         "timestamp": time.Now().Format(time.RFC3339),
     }
     json.NewEncoder(w).Encode(response)
+}
+
+func testAWSHandler(w http.ResponseWriter, r *http.Request){
+	logJSON("info", "version endpoint accessed", map[string]interface{}{
+		"path": r.URL.Path,
+        "method": r.Method,
+    })
+	w.Header().Set("Content-Type", "application/json")
+
+	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-west-2")})
+	if err!=nil{
+		http.Error(w, "Error connecting to AWS console", http.StatusInternalServerError)
+		return
+	}
+
+	svc := s3.New(sess)
+	result, err := svc.ListBuckets(nil)
+	if err != nil {
+        fmt.Println("Unable to list buckets:", err)
+        return
+    }
+
+	var buckets []map[string]interface{}
+    fmt.Println("Buckets:")
+	for _, b := range result.Buckets {
+    	bucket := map[string]interface{}{
+			"name": *b.Name,
+			"creation_date": *b.CreationDate,
+		}
+		buckets = append(buckets, bucket)
+    }
+	err = json.NewEncoder(w).Encode(buckets)
+	if err != nil {
+		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		return
+	}
 }
 
 func main() {
@@ -112,6 +151,7 @@ func main() {
 	c.Get("/about", aboutHandler)
 	c.Get("/health", healthHandler)
 	c.Get("/version", versionHandler)
+	c.Get("/test-aws", testAWSHandler)
 
 	c.NotFound(notFoundHandler)
 	c.MethodNotAllowed(methodNotAllowedHandler)
