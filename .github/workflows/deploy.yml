@@ -33,5 +33,5 @@ jobs:
             \"aws s3 cp s3://video-platform-deployments-zoaewe3s/app-${{ github.sha }} ./app-new\",
             \"chmod +x app-new\",
             \"mv app-new app\",
-            \"nohup env UPLOAD_BUCKET_NAME=${BUCKET_NAME} SNS_TOPIC_ARN=${TOPIC_ARN} ./app > app.log 2>&1 &\"
+            \"nohup env UPLOAD_BUCKET_NAME=${{ vars.UPLOAD_BUCKET_NAME }} SNS_TOPIC_ARN=${{ vars.SNS_TOPIC_ARN }} ./app > app.log 2>&1 &\"
           ]"
