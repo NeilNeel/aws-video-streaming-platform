@@ -154,16 +154,15 @@ func sendUploadNotification(videoID, filename string, fileSize int64) error {
     svc := sns.New(sess)
     
     subject := "New Video Uploaded"
-    message := fmt.Sprintf(`
-		🎥 New Video Upload Alert
+    message := fmt.Sprintf(`🎥 New Video Upload Alert
 
-		Video ID: %s
-		Original Filename: %s
-		File Size: %.2f MB
-		Upload Time: %s
+Video ID: %s
+Original Filename: %s
+File Size: %.2f MB
+Upload Time: %s
 
-		The video has been successfully stored in S3 and is ready for processing.
-    `, videoID, filename, float64(fileSize)/(1024*1024), time.Now().Format(time.RFC3339))
+The video has been successfully stored in S3 and is ready for processing.`, 
+        videoID, filename, float64(fileSize)/(1024*1024), time.Now().Format(time.RFC3339))
 
     _, err = svc.Publish(&sns.PublishInput{
         TopicArn: aws.String(getSNSTopicArn()),
