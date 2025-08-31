@@ -61,8 +61,8 @@ logs/
 tmp/
 temp/
 
-# Screenshots (optional - you might want to track these for documentation)
-# screenshots/
+# Screenshots
+screenshots/
 
 # Lambda deployment packages
 *.zip
