@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -26,9 +28,17 @@ const (
 func getUploadBucketName() string {
     bucketName := os.Getenv("UPLOAD_BUCKET_NAME")
     if bucketName == "" {
-        bucketName = "video-upload-zoaewe3s" // fallback default
+        bucketName = "video-upload-zoaewe3s"
     }
     return bucketName
+}
+
+func getSNSTopicArn() string {
+    topicArn := os.Getenv("SNS_TOPIC_ARN")
+    if topicArn == "" {
+        log.Fatal("SNS_TOPIC_ARN environment variable is required")
+    }
+    return topicArn
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request){
@@ -87,6 +97,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request){
         "upload_time": time.Now().Format(time.RFC3339),
     }
 
+	if err := sendUploadNotification(videoID, handler.Filename, handler.Size); err != nil {
+        logJSON("error", "SNS notification failed", map[string]interface{}{
+            "error": err.Error(),
+        })
+    }
+
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 
@@ -122,6 +138,37 @@ func uploadToS3(file multipart.File, s3Key, originalFilename string, fileSize in
             "file-size":        aws.String(strconv.FormatInt(fileSize, 10)),
         },
         ContentType: aws.String("video/mp4"),
+    })
+
+    return err
+}
+
+func sendUploadNotification(videoID, filename string, fileSize int64) error {
+    sess, err := session.NewSession(&aws.Config{
+        Region: aws.String("us-east-1"),
+    })
+    if err != nil {
+        return err
+    }
+
+    svc := sns.New(sess)
+    
+    subject := "New Video Uploaded"
+    message := fmt.Sprintf(`
+		🎥 New Video Upload Alert
+
+		Video ID: %s
+		Original Filename: %s
+		File Size: %.2f MB
+		Upload Time: %s
+
+		The video has been successfully stored in S3 and is ready for processing.
+    `, videoID, filename, float64(fileSize)/(1024*1024), time.Now().Format(time.RFC3339))
+
+    _, err = svc.Publish(&sns.PublishInput{
+        TopicArn: aws.String(getSNSTopicArn()),
+        Subject:  aws.String(subject),
+        Message:  aws.String(message),
     })
 
     return err
@@ -219,7 +266,7 @@ func versionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func testAWSHandler(w http.ResponseWriter, r *http.Request){
-	logJSON("info", "version endpoint accessed", map[string]interface{}{
+	logJSON("info", "test-aws endpoint accessed", map[string]interface{}{
 		"path": r.URL.Path,
         "method": r.Method,
     })
@@ -227,6 +274,9 @@ func testAWSHandler(w http.ResponseWriter, r *http.Request){
 
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err!=nil{
+		logJSON("error", "Failed to create AWS session", map[string]interface{}{
+			"error": err.Error(),
+		})
 		http.Error(w, "Error connecting to AWS console", http.StatusInternalServerError)
 		return
 	}
@@ -234,12 +284,18 @@ func testAWSHandler(w http.ResponseWriter, r *http.Request){
 	svc := s3.New(sess)
 	result, err := svc.ListBuckets(nil)
 	if err != nil {
-        fmt.Println("Unable to list buckets:", err)
+        logJSON("error", "Failed to list S3 buckets", map[string]interface{}{
+			"error": err.Error(),
+		})
+		http.Error(w, "Unable to list buckets", http.StatusInternalServerError)
         return
     }
 
 	var buckets []map[string]interface{}
-    fmt.Println("Buckets:")
+    logJSON("info", "Successfully retrieved S3 buckets", map[string]interface{}{
+		"bucket_count": len(result.Buckets),
+	})
+	
 	for _, b := range result.Buckets {
     	bucket := map[string]interface{}{
 			"name": *b.Name,
@@ -247,8 +303,18 @@ func testAWSHandler(w http.ResponseWriter, r *http.Request){
 		}
 		buckets = append(buckets, bucket)
     }
-	err = json.NewEncoder(w).Encode(buckets)
+	
+	response := map[string]interface{}{
+		"buckets": buckets,
+		"total_count": len(buckets),
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+	
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
+		logJSON("error", "Failed to encode JSON response", map[string]interface{}{
+			"error": err.Error(),
+		})
 		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
 		return
 	}

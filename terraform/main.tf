@@ -264,6 +264,11 @@ resource "aws_sns_topic" "video_upload_notifications" {
   }
 }
 
+output "sns_topic_arn" {
+  description = "ARN of the SNS topic for video upload notifications"
+  value = aws_sns_topic.video_upload_notifications.arn
+}
+
 resource "aws_sns_topic_policy" "s3_notification_policy" {
   arn = aws_sns_topic.video_upload_notifications.arn
 
