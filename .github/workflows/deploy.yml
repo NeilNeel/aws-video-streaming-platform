@@ -25,16 +25,16 @@ jobs:
       - name: Deploy to EC2
         run: |
           aws ssm send-command \
-            --document-name "AWS-RunShellScript" \
-            --targets "Key=tag:Name,Values=SimpleGoWebServer" \
-            --parameters 'commands=[
-              "sudo pkill -f app || true",
-              "cd /home/ec2-user", 
-              "aws s3 cp s3://video-platform-deployments-zoaewe3s/app-${{ github.sha }} ./app-new",
-              "chmod +x app-new",
-              "mv app-new app",
-              "nohup ./app > app.log 2>&1 &",
-              "sleep 2",
-              "echo Deployment complete"
-            ]' \
-            --comment "Deploy commit ${{ github.sha }}"
+          --document-name "AWS-RunShellScript" \
+          --targets "Key=tag:Name,Values=SimpleGoWebServer" \
+          --parameters "commands=[
+            \"sudo pkill -f app || true\",
+            \"cd /home/ec2-user\", 
+            \"aws s3 cp s3://video-platform-deployments-zoaewe3s/app-${{ github.sha }} ./app-new\",
+            \"chmod +x app-new\",
+            \"mv app-new app\",
+            \"nohup env UPLOAD_BUCKET_NAME=${BUCKET_NAME} ./app > app.log 2>&1 &\",
+            \"sleep 2\",
+            \"echo Deployment complete\"
+            ]" \
+          --comment "Deploy commit ${{ github.sha }}"
