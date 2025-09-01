@@ -62,7 +62,7 @@ tmp/
 temp/
 
 # Screenshots
-screenshots/
+screen-shots/
 
 # Lambda deployment packages
 *.zip

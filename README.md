@@ -1,131 +1,106 @@
-# AWS Video Platform
+# Video Upload Service
 
-🎬 A progressively built video platform using Go and AWS - learning cloud architecture through hands-on development.
+A secure, scalable video upload service built with Go and deployed on AWS infrastructure. Users can upload MP4 videos through a REST API, with automatic storage in S3 and email notifications upon completion.
 
-## 📊 Current Status (Updated January 2025)
+## Architecture Overview
 
-**✅ What We Have Built:**
+![Architecture Diagram](./architecture-diagram.png)
 
-### Core Application
-- ✅ Go HTTP server with Chi router v5.2.2
-- ✅ RESTful API endpoints (`/health`, `/hello`, `/about`)
-- ✅ JSON structured logging
-- ✅ Comprehensive automated testing (`main_test.go`)
+The system demonstrates production-ready patterns including Infrastructure as Code, CI/CD automation, event-driven architecture, and security-first deployment practices.
 
-### Infrastructure (Terraform)
-- ✅ Custom VPC with public subnet
-- ✅ EC2 instance (t2.micro) with security groups
-- ✅ IAM roles with S3 and SSM permissions
-- ✅ S3 bucket for deployment artifacts
-- ✅ SSH key pair management
+## Features
 
-### CI/CD Pipeline
-- ✅ GitHub Actions workflow for build and test
-- ✅ Automated Go application building
-- ✅ Unit test execution on every push
-- ✅ S3 artifact upload with commit SHA
-- ✅ AWS credentials integration
-- 🚧 EC2 deployment automation (in progress)
+- **RESTful API** for video file uploads
+- **File Validation** - Only MP4 files up to 100MB accepted
+- **AWS S3 Storage** with UUID-based file naming
+- **Automatic Notifications** via S3 → SNS integration
+- **Secure Deployment** using AWS Systems Manager (no SSH keys)
+- **Infrastructure as Code** managed with Terraform
+- **CI/CD Pipeline** with GitHub Actions
 
-**🎯 Vision - What We're Building Toward:**
-A mini-YouTube style platform with video upload, processing, and streaming capabilities.
+## Tech Stack
 
-## 🏗️ Current Architecture
-
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   GitHub    │───▶│GitHub Actions│───▶│     S3      │───▶│    EC2      │
-│ Repository  │    │  (CI/CD)    │    │ Artifacts   │    │   Server    │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
-       │                   │                   │                   │
-       ▼                   ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│    Code     │    │Build & Test │    │   Binary    │    │   Running   │
-│   Changes   │    │ Automation  │    │   Storage   │    │ Application │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
-```
-
-**Current Endpoints:**
-- `GET /health` - Health check with JSON response
-- `GET /hello` - Parameterized greeting
-- `GET /about` - About page
-
-## 🛠️ Technology Stack
-
-### **Core Technologies**
-- **Language**: Go 1.23.0
-- **Web Framework**: Chi Router v5.2.2
-- **Infrastructure**: Terraform (AWS Provider)
+- **Backend**: Go with Chi router
+- **Infrastructure**: AWS (EC2, S3, SNS, VPC, IAM, SSM)
+- **IaC**: Terraform
 - **CI/CD**: GitHub Actions
+- **Deployment**: AWS Systems Manager
 
-### **AWS Services (Current)**
-- **Compute**: EC2 (t2.micro) with IAM roles
-- **Storage**: S3 for deployment artifacts
-- **Management**: Systems Manager (SSM) for deployment
-- **Networking**: Custom VPC, Public Subnet, Security Groups, Internet Gateway
-- **Security**: IAM roles, SSH Key Pair, Restricted Security Group Rules
+## API Endpoints
 
-### **Planned AWS Services**
-- **Storage**: S3 for video files (user uploads)
-- **Processing**: Lambda with FFmpeg for transcoding
-- **Database**: DynamoDB for video metadata
-- **CDN**: CloudFront for video streaming
-- **Monitoring**: CloudWatch for observability
-
-### **Development Tools**
-- **Version Control**: Git with GitHub
-- **Testing**: Go testing framework
-- **Documentation**: Markdown
-- **Infrastructure as Code**: Terraform
-
-## 📁 Project Structure
-
-```
-aws-video/
-├── .github/                 # GitHub Actions workflows
-│   └── workflows/
-│       ├── build.yml       # CI/CD pipeline (build, test, deploy)
-│       └── deploy.yml      # Deployment workflow (in progress)
-├── docs/                   # Documentation
-│   ├── setup-guide.md     # Complete deployment guide
-│   └── api-reference.md   # API documentation
-├── terraform/             # Infrastructure as Code
-│   └── main.tf           # Complete AWS infrastructure
-├── lambda/               # Future: Lambda functions
-│   └── video-processor/  # Future: Video processing
-├── screenshots/         # Documentation screenshots
-├── main.go             # Go HTTP server
-├── main_test.go        # Automated tests
-├── go.mod             # Go dependencies
-├── go.sum             # Go dependency checksums
-└── README.md         # This file
+### Upload Video
+```http
+POST /upload
+Content-Type: multipart/form-data
 ```
 
-## 🚀 Quick Start
+**Parameters:**
+- `video` (file): MP4 video file (max 100MB)
+
+**Response:**
+```json
+{
+  "video_id": "23c5e135-0721-4fdf-b165-05db0140eb92",
+  "original_filename": "video1.mp4",
+  "file_size": 17119326,
+  "status": "uploaded",
+  "upload_time": "2025-08-31T20:07:53Z"
+}
+```
+
+### Health Check
+```http
+GET /health
+```
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-08-31T20:07:53Z"
+}
+```
+
+## Quick Start
 
 ### Prerequisites
-- Go 1.23.0+
-- Terraform
-- AWS CLI configured
-- GitHub account
+- AWS Account with appropriate permissions
+- Terraform installed
+- Go 1.23+ installed
+- GitHub account for CI/CD
 
 ### Local Development
+
+1. **Clone the repository**
 ```bash
-# Clone and setup
-git clone https://github.com/NeilNeel/aws-video-streaming-platform
-cd aws-video
+git clone https://github.com/yourusername/aws-video-streaming-platform
+cd aws-video-streaming-platform
+```
 
-# Install dependencies
+2. **Set up environment variables**
+```bash
+cp .env.example .env
+# Edit .env with your AWS resource names
+```
+
+3. **Install dependencies**
+```bash
 go mod tidy
+```
 
-# Run tests
-go test -v
-
-# Run locally
+4. **Run the server**
+```bash
 go run main.go
 ```
 
-### Infrastructure Deployment
+5. **Test the API**
+```bash
+curl -X POST -F "video=@test.mp4" http://localhost:3000/upload
+```
+
+### Production Deployment
+
+1. **Deploy infrastructure**
 ```bash
 cd terraform
 terraform init
@@ -133,110 +108,97 @@ terraform plan
 terraform apply
 ```
 
-## 🔄 CI/CD Pipeline
+2. **Configure GitHub Secrets**
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
 
-### Automated Workflow
+3. **Configure GitHub Variables**
+- `UPLOAD_BUCKET_NAME`
+- `SNS_TOPIC_ARN`
+- `DEPLOYMENT_BUCKET_NAME`
+
+4. **Push code to trigger deployment**
+```bash
+git push origin main
 ```
-Push to main → Build Go App → Run Tests → Upload to S3 → Deploy to EC2
+
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `UPLOAD_BUCKET_NAME` | S3 bucket for video storage | `video-upload-abc123` |
+| `SNS_TOPIC_ARN` | SNS topic for notifications | `arn:aws:sns:us-east-1:123:topic` |
+| `PORT` | Server port | `3000` |
+
+## AWS Resources Created
+
+- **VPC** with public subnet and internet gateway
+- **EC2 instance** (t2.micro) with IAM role
+- **S3 buckets** for video storage and deployment artifacts
+- **SNS topic** with email subscription for notifications
+- **IAM roles** with least-privilege permissions
+- **Security groups** with restricted access
+
+## Security Features
+
+- **No SSH Keys**: Deployment uses AWS Systems Manager
+- **IAM Roles**: EC2 uses role-based authentication
+- **Least Privilege**: Minimal required permissions only
+- **Environment Variables**: No hardcoded credentials
+- **Input Validation**: File type and size restrictions
+
+## Scalability Considerations
+
+The current architecture supports moderate traffic loads. For production scale:
+
+- **Auto Scaling Groups** for horizontal scaling
+- **Application Load Balancer** for traffic distribution
+- **SQS queues** for asynchronous processing
+- **CloudFront CDN** for global content delivery
+- **RDS/DynamoDB** for persistent metadata storage
+
+## Troubleshooting
+
+### Common Issues
+
+**Server crashes after upload:**
+- Check environment variables are set correctly
+- Verify SNS topic ARN is valid
+
+**SSM deployment fails:**
+- Ensure EC2 has `AmazonSSMManagedInstanceCore` policy
+- Check SSM agent is running on EC2
+
+**File upload fails:**
+- Verify file is MP4 format and under 100MB
+- Check S3 bucket permissions
+
+### Logs
+```bash
+# Check application logs on EC2
+cat /home/ec2-user/app.log
+
+# Check SSM command status
+aws ssm list-command-invocations --command-id <command-id>
 ```
 
-### Current Capabilities
-- ✅ **Continuous Integration**: Automated building and testing
-- ✅ **Artifact Management**: S3 storage with commit SHA versioning
-- ✅ **Quality Gates**: Tests must pass before deployment
-- ✅ **Continuous Deployment**: EC2 deployment via SSM (WORKING!)
-
-### GitHub Actions Workflows
-- **build.yml**: Complete CI pipeline with S3 upload
-- **deploy.yml**: EC2 deployment via Systems Manager (WORKING!)
-
-## 🌐 Live Application
-
-**Current deployment is LIVE and working!**
-- **URL**: http://3.83.108.9:3000
-- **Health Check**: http://3.83.108.9:3000/health
-- **Test Endpoints**:
-  ```bash
-  curl http://3.83.108.9:3000/health
-  curl http://3.83.108.9:3000/hello?name=Student
-  curl http://3.83.108.9:3000/about
-  curl http://3.83.108.9:3000/version
-  ```
-
-## 🧪 Testing
-
-### Automated Testing
-- **Unit Tests**: HTTP endpoint validation
-- **Integration Tests**: Full request/response cycle testing
-- **CI Integration**: Tests run on every push
-
-### Test Coverage
-- ✅ Health endpoint (status code, content-type, response body)
-- ✅ Hello endpoint (with and without parameters)
-- 🚧 Future: S3 upload endpoint testing
-
-## 🔧 Current Development Status
-
-### ✅ Completed Features
-1. **Core Web Server**: Fully functional Go HTTP server
-2. **Infrastructure**: Complete AWS setup with Terraform
-3. **CI Pipeline**: Automated build, test, and artifact storage
-4. **Quality Assurance**: Comprehensive testing framework
-
-### ✅ Recently Completed
-1. **Full CI/CD Pipeline**: Complete automated deployment to EC2
-2. **SSM Integration**: Systems Manager successfully deploying applications
-3. **Security Configuration**: Proper IAM roles and security groups
-
-### 📋 Next Milestones
-1. **Video Upload**: Add S3 file upload endpoints
-2. **Video Processing**: Lambda-based transcoding with FFmpeg
-3. **Video Streaming**: CloudFront CDN integration
-4. **Multi-resolution**: 360p and 720p video processing
-
-## 💰 Cost Estimation
-
-- **EC2 t2.micro**: Free tier eligible
-- **S3 Storage**: ~$0.023/GB/month
-- **Lambda**: Free tier: 1M requests/month
-- **Data Transfer**: First 1GB free/month
-- **Systems Manager**: No additional cost
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes with tests
-4. Ensure CI pipeline passes
-5. Submit a pull request
+3. Make changes and add tests
+4. Submit a pull request
 
-## 📝 License
+## License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🎯 Learning Progress
+## Contact
 
-**✅ Currently Demonstrated:**
-- Infrastructure as Code with Terraform
-- AWS EC2, VPC, IAM, S3, and SSM integration
-- Go HTTP server development with Chi router
-- RESTful API design and implementation
-- Automated testing with Go testing framework
-- GitHub Actions CI/CD pipeline
-- AWS SDK integration
-- Professional development workflow
-
-**🚧 Next Learning Goals:**
-- Complete automated deployment pipeline
-- S3 file upload integration
-- Lambda serverless functions
-- Video processing with FFmpeg
-- DynamoDB for metadata storage
-- CloudWatch monitoring and logging
+- **Author**: Neel Barvaliya
+- **Email**: neilpwith123@gmail.com
+- **GitHub**: [@NeilNeel](https://github.com/NeilNeel)
 
 ---
 
-**Built with ❤️ for learning AWS and modern DevOps practices**
-
-**Last Updated**: January 29, 2025 - Full CI/CD Pipeline Working! 🎉
-**Repository**: https://github.com/NeilNeel/aws-video-streaming-platform
+**Note**: This project is designed for learning purposes and demonstrates AWS cloud architecture patterns. For production use, additional security hardening and monitoring should be implemented.
